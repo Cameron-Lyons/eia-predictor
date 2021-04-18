@@ -1,0 +1,93 @@
+schema: '2.0'
+stages:
+  get_interconnect_data:
+    cmd: python scripts/get_interconnect_data.py data/esod_data.csv
+    deps:
+    - path: scripts/get_interconnect_data.py
+      md5: 6058c721abc0a4494b70918ad8b63a57
+      size: 6730
+    outs:
+    - path: data/esod_data.csv
+      md5: 85f95352abd59ebfa05c944998f2e01a
+      size: 120415603
+  get_uscrn_data:
+    cmd: python scripts/get_uscrn_data.py data/uscrn_combined.csv -v
+    deps:
+    - path: scripts/get_uscrn_data.py
+      md5: dc318599e3011547da84994f1d70e657
+      size: 4416
+    outs:
+    - path: data/uscrn_combined.csv
+      md5: 010f1305cfd01151ad3d5b43e260265a
+      size: 23473594
+  get_power_plant_data:
+    cmd: python scripts/get_power_plant_data.py data/balancing_authority_reference.csv
+      data/solar_power.csv data/wind_power.csv -v
+    deps:
+    - path: data/balancing_authority_reference.csv
+      md5: 2ee840e9178ce3049a95bf5bff1e5d00
+      size: 4756
+    - path: scripts/get_power_plant_data.py
+      md5: 94cbadc916a5d3912e689a2a6ec68b72
+      size: 3121
+    outs:
+    - path: data/solar_power.csv
+      md5: b1555dcd04577c0d68e40c026e7c4d18
+      size: 153169
+    - path: data/wind_power.csv
+      md5: bb3f9972f118f4f3e37e0f22a469c257
+      size: 51849
+  get_weighted_wind:
+    cmd: python scripts/gen_weighted_wind.py data/wind_power.csv data/weighted_wind.csv
+      -v
+    deps:
+    - path: data/wind_power.csv
+      md5: bb3f9972f118f4f3e37e0f22a469c257
+      size: 51849
+    - path: scripts/gen_weighted_wind.py
+      md5: 933113915e6ab396daf1011ec424861a
+      size: 8072
+    outs:
+    - path: data/weighted_wind.csv
+      md5: 755dc08f61ee273a7106e27c12b2a843
+      size: 2448437
+  get_weighted_solar:
+    cmd: python scripts/gen_weighted_solar.py data/solar_power.csv data/uscrn_combined.csv
+      data/weighted_solar.csv -v
+    deps:
+    - path: data/solar_power.csv
+      md5: b1555dcd04577c0d68e40c026e7c4d18
+      size: 153169
+    - path: data/uscrn_combined.csv
+      md5: 010f1305cfd01151ad3d5b43e260265a
+      size: 23473594
+    - path: scripts/gen_weighted_solar.py
+      md5: f940a02f5827a16439bc11f6edba8973
+      size: 7037
+    outs:
+    - path: data/weighted_solar.csv
+      md5: e67fc9c9e204982e91501e48971ee0b2
+      size: 22443691
+  gen_final_dataframe:
+    cmd: python scripts/gen_final_dataframes.py data/weighted_solar.csv data/weighted_wind.csv
+      data/esod_data.csv data/final_solar.csv data/final_wind.csv -v
+    deps:
+    - path: data/esod_data.csv
+      md5: 85f95352abd59ebfa05c944998f2e01a
+      size: 120415603
+    - path: data/weighted_solar.csv
+      md5: e67fc9c9e204982e91501e48971ee0b2
+      size: 22443691
+    - path: data/weighted_wind.csv
+      md5: 755dc08f61ee273a7106e27c12b2a843
+      size: 2448437
+    - path: scripts/gen_final_dataframes.py
+      md5: 87aeb2d29fe5ce7218c6110c6912f05e
+      size: 3329
+    outs:
+    - path: data/final_solar.csv
+      md5: e4bee8c8b75832ee3b2c4f7dbb7916a1
+      size: 18201115
+    - path: data/final_wind.csv
+      md5: 5ab339bc77d83c31c2d1c473b45b33ab
+      size: 3400251

@@ -1,0 +1,7 @@
+pandas==1.2.4
+numpy==1.20.2
+geopandas==0.9.0
+requests==2.25.1
+scikit-learn==0.24.1
+fsspec==0.9.0
+

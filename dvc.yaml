@@ -1,0 +1,50 @@
+stages:
+  get_interconnect_data:
+    cmd: python scripts/get_interconnect_data.py data/esod_data.csv
+    deps:
+    - scripts/get_interconnect_data.py
+    outs:
+    - data/esod_data.csv
+  get_uscrn_data:
+    cmd: python scripts/get_uscrn_data.py data/uscrn_combined.csv -v
+    deps:
+    - scripts/get_uscrn_data.py
+    outs:
+    - data/uscrn_combined.csv
+  get_power_plant_data:
+    cmd: python scripts/get_power_plant_data.py data/balancing_authority_reference.csv
+      data/solar_power.csv data/wind_power.csv -v
+    deps:
+    - data/balancing_authority_reference.csv
+    - scripts/get_power_plant_data.py
+    outs:
+    - data/solar_power.csv
+    - data/wind_power.csv
+  get_weighted_wind:
+    cmd: python scripts/gen_weighted_wind.py data/wind_power.csv data/weighted_wind.csv
+      -v
+    deps:
+    - data/wind_power.csv
+    - scripts/gen_weighted_wind.py
+    outs:
+    - data/weighted_wind.csv
+  get_weighted_solar:
+    cmd: python scripts/gen_weighted_solar.py data/solar_power.csv data/uscrn_combined.csv
+      data/weighted_solar.csv -v
+    deps:
+    - data/solar_power.csv
+    - data/uscrn_combined.csv
+    - scripts/gen_weighted_solar.py
+    outs:
+    - data/weighted_solar.csv
+  gen_final_dataframe:
+    cmd: python scripts/gen_final_dataframes.py data/weighted_solar.csv data/weighted_wind.csv
+      data/esod_data.csv data/final_solar.csv data/final_wind.csv -v
+    deps:
+    - data/esod_data.csv
+    - data/weighted_solar.csv
+    - data/weighted_wind.csv
+    - scripts/gen_final_dataframes.py
+    outs:
+    - data/final_solar.csv
+    - data/final_wind.csv
