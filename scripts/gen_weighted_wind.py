@@ -56,7 +56,7 @@ def find_wind_stations(wind_plant_data, required_data=[]):
         (station_list['AWND']==2021) 
     ]
 
-    station_list.to_csv('./data/noaa/tmp_station_list.csv')
+    station_list.to_csv('data/noaa/tmp_station_list.csv')
 
     station_list = station_list[[
         'ID', 
@@ -239,5 +239,3 @@ if __name__ == '__main__':
     if VERBOSE:
         duration = time.time() - start
         print('weight_wind_data total time: {:.2f} seconds'.format(duration), file=STAT_FILE, flush=True)
-
-

@@ -20,6 +20,7 @@ class FTPWalk:
         """
 
         file_list, dirs, nondirs = [], [], []
+        _path = _path.replace("\\", "/")
         try:
             self.connection.cwd(_path)
         except Exception as exp:

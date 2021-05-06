@@ -103,7 +103,7 @@ def uscrn_ftp(out_csv,years=['2018','2019','2020','2021']):
                     print('Reading files...')
                 for l_file in i[2]:
                     sio = io.BytesIO()
-                    retr_string = "RETR "+i[0]+'/'+l_file
+                    retr_string = "RETR "+i[0].replace("\\","/")+'/'+l_file
                     #print(retr_string)
                     resp = ftp.retrbinary(retr_string, lambda data: sio.write(data))
                     sio.seek(0) # Go back to the start
