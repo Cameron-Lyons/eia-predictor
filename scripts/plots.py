@@ -2,10 +2,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-solar = pd.read_csv(r"C:\Users\clyons\ms1_project\data\final_solar.csv")
+solar = pd.read_csv("..\data\final_solar.csv")
 solar["LST_DATE"] = pd.to_datetime(solar["LST_DATE"])
 
-wind = pd.read_csv(r"C:\Users\clyons\ms1_project\data\final_wind.csv")
+wind = pd.read_csv("..\data\final_wind.csv")
 wind["DATE"] = pd.to_datetime(wind["DATE"])
 wind = wind[wind["generation"] >= 0]
 
