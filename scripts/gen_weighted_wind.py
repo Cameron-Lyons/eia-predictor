@@ -56,7 +56,7 @@ def find_wind_stations(wind_plant_data, required_data=[]):
         (station_list['AWND']==2021) 
     ]
 
-    station_list.to_csv('./data/noaa/tmp_station_list.csv')
+    station_list.to_csv('./data/tmp_station_list.csv')
 
     station_list = station_list[[
         'ID', 
