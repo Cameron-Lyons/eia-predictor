@@ -9,16 +9,16 @@ epochs = 150
 train_window = 12
 fut_pred = 12
 
-solar = pd.read_csv("../data/final_solar.csv").drop(["interconnect_long",
+wind = pd.read_csv("../data/final_wind.csv").drop(["interconnect_long",
                                                    "interconnect_short",
                                                    "data_type",
                                                    "date"],
                                                    axis=1)
-solar["LST_DATE"] = pd.to_datetime(solar["LST_DATE"])
-solar["LST_DATE"] = (solar["LST_DATE"] - solar["LST_DATE"].min()).dt.days
+wind["LST_DATE"] = pd.to_datetime(wind["LST_DATE"])
+wind["LST_DATE"] = (wind["LST_DATE"] - wind["LST_DATE"].min()).dt.days
 
-train_data = solar[solar["LST_DATE"] < test_data_date]
-test_data = solar[solar["LST_DATE"] >= test_data_date]
+train_data = wind[wind["LST_DATE"] < test_data_date]
+test_data = wind[wind["LST_DATE"] >= test_data_date]
 
 encoder = OneHotEncoder(categories='auto',sparse=False)
 train_data["eia_short_name"] = encoder.fit_transform(train_data["eia_short_name"].to_numpy().reshape(-1, 1))
