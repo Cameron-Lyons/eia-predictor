@@ -10,10 +10,9 @@ solar["LST_DATE"] = pd.to_datetime(solar["LST_DATE"])
 solar["LST_DATE"] = (solar["LST_DATE"] - solar["LST_DATE"].min()).dt.days
 
 avg_solar = solar.groupby("LST_DATE").mean()
-avg_solar["30day_rolling_avg"] = avg_solar.generation.rolling(30).mean()
-data = avg_solar.dropna(subset=["30day_rolling_avg"])
+data = avg_solar.dropna(subset=["generation"])
 t = data.index
-data = data["30day_rolling_avg"]
+data = data["generation"]
 
 guess_mean = np.mean(data)-1000
 guess_phase = -300
@@ -30,7 +29,7 @@ data_fit = est_amp*np.sin(est_freq*t+est_phase) + est_mean + t*est_increase
 
 
 score = r2_score(data, data_fit)
-print("The r2 score of the model is {:.2f}".format(score))
+print("The r2 score of the model is {:.3f}".format(score))
 
 plt.plot(t, data, '.', label="actual")
 plt.plot(t, data_fit, label="predicted")
