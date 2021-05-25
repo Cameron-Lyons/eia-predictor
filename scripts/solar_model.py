@@ -1,39 +1,47 @@
 import torch
 import torch.nn as nn
 
-import seaborn as sns
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler
 
 torch.manual_seed(0)
 np.random.seed(0)
 
-train_window = 30
+lookahead = 1  # days forecasting
+train_window = 30  # num days lstm use to predict next days generation
 test_data_date = 800
-epochs = 25
+lstm_epochs = 25
+ff_epochs = 20
 
-solar = pd.read_csv("final_solar.csv").drop(["interconnect_long", "interconnect_short", "data_type", "date"], axis=1)
+solar = pd.read_csv("final_solar.csv").drop(["interconnect_long",
+                                             "interconnect_short",
+                                             "data_type",
+                                             "date"],
+                                             axis=1)  # drop redundant columns
 solar["LST_DATE"] = pd.to_datetime(solar["LST_DATE"])
 solar["LST_DATE"] = (solar["LST_DATE"] - solar["LST_DATE"].min()).dt.days
+avg_solar = solar.groupby("LST_DATE").mean()
+avg_solar = avg_solar.iloc[:-10]  # clean out very low values for recent dates
 
-train = solar[solar["LST_DATE"] < test_data_date]
-test = solar[solar["LST_DATE"] >= test_data_date]
-
-encoder = OneHotEncoder(categories='auto', sparse=False)
-train["eia_short_name"] = encoder.fit_transform(train["eia_short_name"].to_numpy().reshape(-1, 1))
-test["eia_short_name"] = encoder.transform(test["eia_short_name"].to_numpy().reshape(-1, 1))
+train = avg_solar[avg_solar.index < test_data_date]
+test = avg_solar[avg_solar.index >= test_data_date]
 
 scaler = MinMaxScaler(feature_range=(0, 1))
 train_scaled = scaler.fit_transform(train)
-test_scaled = scaler.fit_transform(test)
+test_scaled = scaler.transform(test)
 
-train_scaled = train_scaled[:, -1]
-test_scaled = test_scaled[:, -1]
+X_train = train_scaled[:,:-1]
+y_train = train_scaled[:, -1]
+X_test = test_scaled[:,:-1]
+y_test = test_scaled[:, -1]
 
-train_data_normalized = torch.FloatTensor(train_scaled).view(-1)
+X_train = torch.FloatTensor(X_train)
+y_train_normalized = torch.FloatTensor(y_train).view(-1)
+X_test = torch.FloatTensor(X_test)
+y_test_normalized = torch.FloatTensor(y_test).view(-1)
 
 def create_inout_sequences(input_data, tw):
     inout_seq = []
@@ -44,9 +52,12 @@ def create_inout_sequences(input_data, tw):
         inout_seq.append((train_seq ,train_label))
     return inout_seq
 
-train_inout_seq = create_inout_sequences(train_data_normalized, train_window)
+train_inout_seq = create_inout_sequences(y_train_normalized, train_window)
 
-def inv_trans(preds, n_features=26, n_obs=27772):
+def inv_trans(preds, n_features=train.shape[0], n_obs=train.shape[1]):
+    '''data for inverse transform must have same number of inputs as data it was fit too
+       adds dummy zeros to make it same shape and run inverse transform
+       brings data to normal scale for visualization'''
     dummy = np.zeros((n_obs, n_features))
     data = np.concatenate([dummy, preds], axis=1)
     return scaler.inverse_transform(data)[:, -1]
@@ -68,11 +79,28 @@ class LSTM(nn.Module):
         predictions = self.linear(lstm_out.view(len(input_seq), -1))
         return predictions[-1]
 
+class Feedforward(torch.nn.Module):
+        def __init__(self, input_size, hidden_size):
+            super(Feedforward, self).__init__()
+            self.input_size = input_size
+            self.hidden_size  = hidden_size
+            self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
+            self.relu = torch.nn.ReLU()
+            self.fc2 = torch.nn.Linear(self.hidden_size, 1)
+            self.sigmoid = torch.nn.Sigmoid()        
+        
+        def forward(self, x):
+            hidden = self.fc1(x)
+            relu = self.relu(hidden)
+            output = self.fc2(relu)
+            output = self.sigmoid(output)
+            return output
+
 model = LSTM()
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-for i in range(epochs):
+for i in range(lstm_epochs):
     for seq, labels in train_inout_seq:
         optimizer.zero_grad()
         model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size),
@@ -88,22 +116,42 @@ print(f'epoch: {i:3} loss: {single_loss.item():10.10f}')
 
 fut_pred = len(test)
 
-test_inputs = train_data_normalized[-train_window:].tolist()
+train_inputs = y_train_normalized[-train_window:].tolist()
+test_inputs = y_test_normalized[-train_window:].tolist()
 
 model.eval()
 
-for i in range(fut_pred):
+for i in range(len(test)):
     seq = torch.FloatTensor(test_inputs[-train_window:])
     with torch.no_grad():
         model.hidden = (torch.zeros(1, 1, model.hidden_layer_size),
                         torch.zeros(1, 1, model.hidden_layer_size))
         test_inputs.append(model(seq).item())
 
-preds = inv_trans(np.array(test_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
+train_preds = inv_trans(np.array(train_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
+train_resids = y_train - train_preds
+test_preds = inv_trans(np.array(test_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
+test_resids = y_test - test_preds
 
-plt.title('Solar Generation')
-plt.grid(True)
-plt.autoscale(axis='x', tight=True)
-plt.plot(solar["LST_DATE"], solar['generation'])
-plt.plot(test["LST_DATE"], preds)
+model = Feedforward(2, 10)
+criterion = torch.nn.BCELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr = 0.01)
+
+for epoch in range(ff_epochs):
+    optimizer.zero_grad()
+    y_pred = model(X_train)
+    loss = criterion(y_pred.squeeze(), train_resids)
+   
+    print('Epoch {}: train loss: {}'.format(epoch, loss.item()))
+    loss.backward()
+    optimizer.step()
+
+model.eval()
+y_pred = model(X_test)
+after_train = criterion(y_pred.squeeze(), y_test) 
+
+plt.plot(avg_solar.index, avg_solar.generation, '.', label="actual")
+plt.plot(test.index, preds, '.', label="predicted")
+plt.legend()
+plt.title("Model Fit to Solar Power Generation {} Day Forecast".format(lookahead))
 plt.show()
