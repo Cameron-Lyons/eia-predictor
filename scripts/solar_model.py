@@ -6,13 +6,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import r2_score
 
 torch.manual_seed(0)
 np.random.seed(0)
 
-lookahead = 1  # days forecasting
+lookahead = 1  # num days ahead to forecast
 train_window = 30  # num days lstm use to predict next days generation
-test_data_date = 800
+test_data_date = 800 # num days in train set
 lstm_epochs = 25
 ff_epochs = 20
 
@@ -100,7 +101,7 @@ model = LSTM()
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-for i in range(lstm_epochs):
+for epoch in range(lstm_epochs):
     for seq, labels in train_inout_seq:
         optimizer.zero_grad()
         model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size),
@@ -112,7 +113,7 @@ for i in range(lstm_epochs):
         single_loss.backward()
         optimizer.step()
 
-print(f'epoch: {i:3} loss: {single_loss.item():10.10f}')
+    print('Epoch {}: train loss: {}'.format(epoch, single_loss.item()))
 
 fut_pred = len(test)
 
@@ -133,25 +134,29 @@ train_resids = y_train - train_preds
 test_preds = inv_trans(np.array(test_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
 test_resids = y_test - test_preds
 
-model = Feedforward(2, 10)
-criterion = torch.nn.BCELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr = 0.01)
+model = Feedforward(X_train.shape[0], 10)
+loss_function = torch.nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr = 0.01)
 
 for epoch in range(ff_epochs):
     optimizer.zero_grad()
     y_pred = model(X_train)
-    loss = criterion(y_pred.squeeze(), train_resids)
+    loss = loss_function(y_pred.squeeze(), train_resids)
    
     print('Epoch {}: train loss: {}'.format(epoch, loss.item()))
     loss.backward()
     optimizer.step()
 
 model.eval()
-y_pred = model(X_test)
-after_train = criterion(y_pred.squeeze(), y_test) 
+final_preds = model(X_test) + test_preds
+final_preds = inv_trans(final_preds, n_obs=test.shape[1])
+y_actual = test[:, -1]
+
+score = r2_score(y_actual, final_preds)
+print("The r2 score of the model is {:.3f}".format(score))
 
 plt.plot(avg_solar.index, avg_solar.generation, '.', label="actual")
-plt.plot(test.index, preds, '.', label="predicted")
+plt.plot(test.index, final_preds, '.', label="predicted")
 plt.legend()
 plt.title("Model Fit to Solar Power Generation {} Day Forecast".format(lookahead))
 plt.show()
