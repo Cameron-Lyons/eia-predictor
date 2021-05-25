@@ -17,15 +17,18 @@ test_data_date = 800 # num days in train set
 lstm_epochs = 25
 ff_epochs = 20
 
-wind = pd.read_csv("../data/final_wind.csv")
+solar = pd.read_csv("final_solar.csv").drop(["interconnect_long",
+                                             "interconnect_short",
+                                             "data_type",
+                                             "date"],
+                                             axis=1)  # drop redundant columns
+solar["LST_DATE"] = pd.to_datetime(solar["LST_DATE"])
+solar["LST_DATE"] = (solar["LST_DATE"] - solar["LST_DATE"].min()).dt.days
+avg_solar = solar.groupby("LST_DATE").mean()
+avg_solar = avg_solar.iloc[:-10]  # clean out very low values for recent dates
 
-wind["DATE"] = pd.to_datetime(wind["DATE"])
-wind["DATE"] = (wind["DATE"] - wind["DATE"].min()).dt.days
-
-avg_wind = wind.groupby("DATE").mean()
-data = avg_wind.dropna(subset=["generation"])
-train = wind[wind["DATE"] < test_data_date]
-test = wind[wind["DATE"] >= test_data_date]
+train = avg_solar[avg_solar.index < test_data_date]
+test = avg_solar[avg_solar.index >= test_data_date]
 
 scaler = MinMaxScaler(feature_range=(0, 1))
 train_scaled = scaler.fit_transform(train)
@@ -156,8 +159,8 @@ y_actual = test[:, -1]
 score = r2_score(y_actual, final_preds)
 print("The r2 score of the model is {:.3f}".format(score))
 
-plt.plot(avg_wind.index, avg_wind.generation, '.', label="actual")
+plt.plot(avg_solar.index, avg_solar.generation, '.', label="actual")
 plt.plot(test.index, final_preds, '.', label="predicted")
 plt.legend()
-plt.title("Model Fit to Wind Power Generation {} Day Forecast".format(lookahead))
+plt.title("Model Fit to Solar Power Generation {} Day Forecast".format(forecast_days))
 plt.show()
