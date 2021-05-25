@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import leastsq
 import pylab as plt
 from sklearn.metrics import r2_score
+from json import dump
 
 solar = pd.read_csv("../data/final_solar.csv")
 
@@ -27,6 +28,12 @@ est_amp, est_freq, est_phase, est_mean, est_increase = leastsq(optimize_func, [g
 
 data_fit = est_amp*np.sin(est_freq*t+est_phase) + est_mean + t*est_increase
 
+model_parameters = {"est_amp": est_amp,
+                    "est_freq": est_freq,
+                    "est_phase": est_phase,
+                    "est_mean": est_mean,
+                    "est_increase": est_increase}
+dump(model_parameters, "../models/solar_sine.json")
 
 score = r2_score(data, data_fit)
 print("The r2 score of the model is {:.3f}".format(score))
