@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import leastsq
 import pylab as plt
 from sklearn.metrics import r2_score
+from json import dump
 
 wind = pd.read_csv("../data/final_wind.csv")
 
@@ -24,6 +25,13 @@ data_first_guess = guess_amp*np.sin(guess_freq*t+guess_phase) + guess_mean + t*g
 
 optimize_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) + x[3] + t*x[4] - data
 est_amp, est_freq, est_phase, est_mean, est_increase = leastsq(optimize_func, [guess_amp, guess_freq, guess_phase, guess_mean, guess_increase])[0]
+
+model_parameters = {"est_amp": est_amp,
+                    "est_freq": est_freq,
+                    "est_phase": est_phase,
+                    "est_mean": est_mean,
+                    "est_increase": est_increase}
+dump(model_parameters, "../models/wind_sine.json")
 
 data_fit = est_amp*np.sin(est_freq*t+est_phase) + est_mean + t*est_increase
 
