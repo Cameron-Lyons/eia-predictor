@@ -138,6 +138,8 @@ train_resids = y_train - train_preds
 test_preds = inv_trans(np.array(test_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
 test_resids = y_test - test_preds
 
+torch.save(model.state_dict(), "../models/wind_lstm.bin")
+
 model = Feedforward(X_train.shape[0], 10)
 loss_function = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr = 0.01)
@@ -155,6 +157,8 @@ model.eval()
 final_preds = model(X_test) + test_preds
 final_preds = inv_trans(final_preds, n_obs=test.shape[1])
 y_actual = test[:, -1]
+
+torch.save(model.state_dict(), "../models/wind_ff.bin")
 
 score = r2_score(y_actual, final_preds)
 print("The r2 score of the model is {:.3f}".format(score))
