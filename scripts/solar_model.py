@@ -11,7 +11,7 @@ from sklearn.metrics import r2_score
 torch.manual_seed(0)
 np.random.seed(0)
 
-lookahead = 1  # num days ahead to forecast
+forecast_days = 1  # num days ahead to forecast
 train_window = 30  # num days lstm use to predict next days generation
 test_data_date = 800 # num days in train set
 lstm_epochs = 25
@@ -35,9 +35,13 @@ train_scaled = scaler.fit_transform(train)
 test_scaled = scaler.transform(test)
 
 X_train = train_scaled[:,:-1]
+X_train = X_train[:-forecast_days]
 y_train = train_scaled[:, -1]
+y_train = y_train[forecast_days:]
 X_test = test_scaled[:,:-1]
+X_test = X_test[:-forecast_days]
 y_test = test_scaled[:, -1]
+y_test = y_test[forecast_days:]
 
 X_train = torch.FloatTensor(X_train)
 y_train_normalized = torch.FloatTensor(y_train).view(-1)
