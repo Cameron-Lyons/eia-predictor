@@ -101,17 +101,17 @@ class Feedforward(torch.nn.Module):
             output = self.sigmoid(output)
             return output
 
-model = LSTM()
+LSTM_model = LSTM()
 loss_function = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(LSTM_model.parameters(), lr=0.001)
 
 for epoch in range(lstm_epochs):
     for seq, labels in train_inout_seq:
         optimizer.zero_grad()
-        model.hidden_cell = (torch.zeros(1, 1, model.hidden_layer_size),
-                             torch.zeros(1, 1, model.hidden_layer_size))
+        LSTM_model.hidden_cell = (torch.zeros(1, 1, LSTM_model.hidden_layer_size),
+                             torch.zeros(1, 1, LSTM_model.hidden_layer_size))
 
-        y_pred = model(seq)
+        y_pred = LSTM_model(seq)
 
         single_loss = loss_function(y_pred, labels)
         single_loss.backward()
@@ -124,41 +124,41 @@ fut_pred = len(test)
 train_inputs = y_train_normalized[-train_window:].tolist()
 test_inputs = y_test_normalized[-train_window:].tolist()
 
-model.eval()
+LSTM_model.eval()
 
 for i in range(len(test)):
     seq = torch.FloatTensor(test_inputs[-train_window:])
     with torch.no_grad():
-        model.hidden = (torch.zeros(1, 1, model.hidden_layer_size),
-                        torch.zeros(1, 1, model.hidden_layer_size))
-        test_inputs.append(model(seq).item())
+        LSTM_model.hidden = (torch.zeros(1, 1, LSTM_model.hidden_layer_size),
+                        torch.zeros(1, 1, LSTM_model.hidden_layer_size))
+        test_inputs.append(LSTM_model(seq).item())
 
 train_preds = inv_trans(np.array(train_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
 train_resids = y_train - train_preds
 test_preds = inv_trans(np.array(test_inputs[train_window:]).reshape(-1, 1),n_obs=fut_pred)
 test_resids = y_test - test_preds
 
-torch.save(model.state_dict(), "../models/wind_lstm.bin")
+torch.save(LSTM_model.state_dict(), "../models/wind_lstm.bin")
 
-model = Feedforward(X_train.shape[0], 10)
+FF_model = Feedforward(X_train.shape[0], 10)
 loss_function = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr = 0.01)
+optimizer = torch.optim.Adam(FF_model.parameters(), lr = 0.01)
 
 for epoch in range(ff_epochs):
     optimizer.zero_grad()
-    y_pred = model(X_train)
+    y_pred = FF_model(X_train)
     loss = loss_function(y_pred.squeeze(), train_resids)
    
     print('Epoch {}: train loss: {}'.format(epoch, loss.item()))
     loss.backward()
     optimizer.step()
 
-model.eval()
-final_preds = model(X_test) + test_preds
+FF_model.eval()
+final_preds = FF_model(X_test) + test_preds
 final_preds = inv_trans(final_preds, n_obs=test.shape[1])
 y_actual = test[:, -1]
 
-torch.save(model.state_dict(), "../models/wind_ff.bin")
+torch.save(FF_model.state_dict(), "../models/wind_ff.bin")
 
 score = r2_score(y_actual, final_preds)
 print("The r2 score of the model is {:.3f}".format(score))
